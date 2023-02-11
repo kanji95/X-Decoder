@@ -105,3 +105,6 @@ plot/
 *venv/*
 *.pt
 *.pth
+
+**.mp4
+
