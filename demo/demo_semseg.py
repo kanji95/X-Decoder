@@ -16,6 +16,8 @@ from PIL import Image
 import numpy as np
 np.random.seed(1)
 
+from glob import glob
+
 import torch
 from torchvision import transforms
 
@@ -46,6 +48,9 @@ def main(args=None):
     pretrained_pth = os.path.join(opt['WEIGHT'])
     output_root = './output'
     image_pth = 'images/animals.png'
+    
+    image_dir = '/media/newhd/rgb/'
+    video_frames = sorted(glob(image_dir + "*"))
 
     model = BaseModel(opt, build_model(opt)).from_pretrained(pretrained_pth).eval().cuda()
 
@@ -53,7 +58,7 @@ def main(args=None):
     t.append(transforms.Resize(512, interpolation=Image.BICUBIC))
     transform = transforms.Compose(t)
 
-    stuff_classes = ['zebra','antelope','giraffe','ostrich','sky','water','grass','sand','tree']
+    stuff_classes = ["table", "chair", "person", "door", "furniture", "desk", "curtain", "fan", "workdesk", "wood", "floor", "ceiling"]
     stuff_colors = [random_color(rgb=True, maximum=255).astype(np.int).tolist() for _ in range(len(stuff_classes))]
     stuff_dataset_id_to_contiguous_id = {x:x for x in range(len(stuff_classes))}
 
@@ -68,24 +73,29 @@ def main(args=None):
     model.model.sem_seg_head.num_classes = len(stuff_classes)
 
     with torch.no_grad():
-        image_ori = Image.open(image_pth).convert("RGB")
-        width = image_ori.size[0]
-        height = image_ori.size[1]
-        image = transform(image_ori)
-        image = np.asarray(image)
-        image_ori = np.asarray(image_ori)
-        images = torch.from_numpy(image.copy()).permute(2,0,1).cuda()
+        for ind in range(2, len(video_frames)):
+            image_ori = Image.open(f'{image_dir}img_{ind}.png').convert('RGB')
+            # image_ori = Image.open(image_pth).convert("RGB")
+            width = image_ori.size[0]
+            height = image_ori.size[1]
+            image = transform(image_ori)
+            image = np.asarray(image)
+            image_ori = np.asarray(image_ori)
+            images = torch.from_numpy(image.copy()).permute(2,0,1).cuda()
 
-        batch_inputs = [{'image': images, 'height': height, 'width': width}]
-        outputs = model.forward(batch_inputs)
-        visual = Visualizer(image_ori, metadata=metadata)
+            batch_inputs = [{'image': images, 'height': height, 'width': width}]
+            outputs = model.forward(batch_inputs)
+            visual = Visualizer(image_ori, metadata=metadata)
 
-        sem_seg = outputs[-1]['sem_seg'].max(0)[1]
-        demo = visual.draw_sem_seg(sem_seg.cpu(), alpha=0.5) # rgb Image
+            sem_seg = outputs[-1]['sem_seg'].max(0)[1]
+            demo = visual.draw_sem_seg(sem_seg.cpu(), alpha=0.5) # rgb Image
 
-        if not os.path.exists(output_root):
-            os.makedirs(output_root)
-        demo.save(os.path.join(output_root, 'sem.png'))
+            if not os.path.exists(output_root):
+                os.makedirs(output_root)
+            demo.save(os.path.join(output_root, f'lab_{ind:03d}.png'))
+    
+    os.system("ffmpeg -r 1 -i output/lab_%03d.png -vcodec mpeg4 -y lab_semseg.mp4")
+    os.system("rm -rf output/lab_*")
 
 
 if __name__ == "__main__":

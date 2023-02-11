@@ -54,6 +54,17 @@ def load_opt_command(args):
     parser.add_argument('--user_dir', help='Path to the user defined module for tasks (models, criteria), optimizers, and lr schedulers.')
     parser.add_argument('--config_overrides', nargs='*', help='Override parameters on config with a json style string, e.g. {"<PARAM_NAME_1>": <PARAM_VALUE_1>, "<PARAM_GROUP_2>.<PARAM_SUBGROUP_2>.<PARAM_2>": <PARAM_VALUE_2>}. A key with "." updates the object in the corresponding nested dict. Remember to escape " in command line.')
     parser.add_argument('--overrides', help='arguments that used to override the config file in cmdline', nargs=argparse.REMAINDER)
+    
+    # tracking args
+    parser.add_argument("--track_thresh", type=float, default=0.5, help="tracking confidence threshold")
+    parser.add_argument("--track_buffer", type=int, default=30, help="the frames for keep lost tracks")
+    parser.add_argument("--match_thresh", type=float, default=0.8, help="matching threshold for tracking")
+    parser.add_argument(
+        "--aspect_ratio_thresh", type=float, default=1.6,
+        help="threshold for filtering out boxes of which aspect ratio are above the given value."
+    )
+    parser.add_argument('--min_box_area', type=float, default=10, help='filter out tiny boxes')
+    parser.add_argument("--mot20", dest="mot20", default=False, action="store_true", help="test mot20.")
 
     cmdline_args = parser.parse_args() if not args else parser.parse_args(args)
 
